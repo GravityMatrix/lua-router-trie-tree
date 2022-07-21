@@ -69,13 +69,17 @@ local function make_match_path(match_path_array)
     if #match_path_array == 0 then
         return nil
     end
-    -- 跳过第一个请求方法标记位。
-    return Separator .. concat(match_path_array, Separator, 2)
+    -- 跳过最后一个请求方法标记位。
+    return Separator .. concat(match_path_array, Separator, 1, #match_path_array - 1)
 end
 
 
 local function make_complete_path(path, method)
-    return Separator .. method .. path
+    if not method or method == "ANY" then
+        return path .. Separator .. "ANY"
+    end
+    return path .. Separator .. method
+
 end
 
 function _M:_insert(path)
@@ -117,7 +121,7 @@ function _M:_remove(path_array, depth, this_node)
     return this_node:has_not_next_node()
 end
 
-function _M:_match(path, node_path)
+function _M:_match(path, method, node_path)
     local match_path_array = {}
     local match_fuzzy_array = {}
     local this_node = self.root
@@ -143,20 +147,21 @@ function _M:_match(path, node_path)
             end
         end
     end
-    local method = match_path_array[1]
+
+    local match_size = #match_path_array
     -- 存在完整匹配
-    if #match_path_array == #fragment_array then
+    if match_size == #fragment_array then
         return path, make_match_path(match_path_array), method, true
         -- 是否有模糊匹配
     elseif #match_fuzzy_array > 0 then
         return path, match_fuzzy_array[#match_fuzzy_array], method, true
     end
-    return path, nil, nil, false
+    return path, nil, method, false
 end
 
 
 function _M:match(path, method)
-    return self:_match(path, make_complete_path(path, method))
+    return self:_match(path, method, make_complete_path(path, method))
 end
 
 function _M:new()
